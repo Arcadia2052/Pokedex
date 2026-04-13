@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokédex</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #d32f2f, #b71c1c);
+    color: white;
+}
+
+.header {
+    text-align: center;
+    padding: 20px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.search-bar {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 20px;
+    position: relative;
+}
+
+input {
+    flex: 1;
+    max-width: 250px;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+}
+
+button {
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: none;
+    background: white;
+    color: #d32f2f;
+    font-weight: bold;
+}
+
+/* suggestions */
+.suggestions {
+    position: absolute;
+    top: 55px;
+    width: 250px;
+    background: white;
+    color: black;
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.suggestions div {
+    padding: 10px;
+}
+
+.suggestions div:hover {
+    background: #eee;
+}
+
+/* loader */
+.loader {
+    display: none;
+    justify-content: center;
+    margin-top: 40px;
+}
+
+.pokeball {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(red 50%, white 50%);
+    border: 4px solid black;
+    position: relative;
+    animation: spin 1s linear infinite;
+}
+
+.pokeball::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    height: 4px;
+    background: black;
+    transform: translateY(-50%);
+}
+
+.pokeball::after {
+    content: "";
+    width: 14px;
+    height: 14px;
+    background: white;
+    border: 3px solid black;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+
+/* card */
+.card {
+    margin: 20px;
+    padding: 20px;
+    border-radius: 25px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(15px);
+    text-align: center;
+    display: none;
+}
+
+.sprite-container {
+    background: white;
+    border-radius: 50%;
+    width: 180px;
+    height: 180px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sprite-container img {
+    width: 140px;
+}
+
+.name {
+    font-size: 22px;
+    margin-top: 10px;
+}
+
+/* types */
+.types {
+    margin-top: 10px;
+}
+
+.type {
+    display: inline-block;
+    padding: 6px 10px;
+    margin: 3px;
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+/* type colors */
+.fire { background:#f08030; }
+.water { background:#6890f0; }
+.grass { background:#78c850; }
+.electric { background:#f8d030; color:black; }
+.psychic { background:#f85888; }
+.ice { background:#98d8d8; color:black; }
+.dragon { background:#7038f8; }
+.dark { background:#705848; }
+.fairy { background:#ee99ac; }
+.normal { background:#a8a878; }
+.fighting { background:#c03028; }
+.flying { background:#a890f0; }
+.poison { background:#a040a0; }
+.ground { background:#e0c068; color:black; }
+.rock { background:#b8a038; }
+.bug { background:#a8b820; }
+.ghost { background:#705898; }
+.steel { background:#b8b8d0; color:black; }
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.stat {
+    background: rgba(0,0,0,0.2);
+    padding: 12px;
+    border-radius: 12px;
+}
+
+.evolution {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.2);
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">POKÉDEX</div>
+
+<div class="search-bar">
+    <input id="pokemonName" type="text" placeholder="Search Pokémon" oninput="showSuggestions()">
+    <button onclick="getPokemon()">Search</button>
+    <div id="suggestions" class="suggestions"></div>
+</div>
+
+<div class="loader" id="loader">
+    <div class="pokeball"></div>
+</div>
+
+<div class="card" id="card">
+    <div class="sprite-container">
+        <img id="sprite">
+    </div>
+
+    <div class="name" id="name"></div>
+
+    <div id="types" class="types"></div>
+
+    <div class="grid">
+        <div class="stat">Height: <span id="height"></span> m</div>
+        <div class="stat">Weight: <span id="weight"></span> kg</div>
+        <div class="stat">Region: <span id="region"></span></div>
+        <div class="stat">ID: <span id="id"></span></div>
+    </div>
+
+    <div class="evolution">
+        Evolution: <span id="evolution"></span>
+    </div>
+</div>
+
+<script>
+const regionMap = {
+    "generation-i": "Kanto",
+    "generation-ii": "Johto",
+    "generation-iii": "Hoenn",
+    "generation-iv": "Sinnoh",
+    "generation-v": "Unova",
+    "generation-vi": "Kalos",
+    "generation-vii": "Alola",
+    "generation-viii": "Galar",
+    "generation-ix": "Paldea"
+};
+
+let pokemonList = [];
+
+// load list
+fetch("https://pokeapi.co/api/v2/pokemon?limit=1000")
+.then(r => r.json())
+.then(d => pokemonList = d.results.map(p => p.name));
+
+// autocomplete
+function showSuggestions() {
+    const input = document.getElementById("pokemonName").value.toLowerCase();
+    const box = document.getElementById("suggestions");
+    box.innerHTML = "";
+
+    if (!input) return;
+
+    pokemonList
+        .filter(p => p.startsWith(input))
+        .slice(0, 5)
+        .forEach(name => {
+            const div = document.createElement("div");
+            div.innerText = name;
+            div.onclick = () => {
+                document.getElementById("pokemonName").value = name;
+                box.innerHTML = "";
+                getPokemon();
+            };
+            box.appendChild(div);
+        });
+}
+
+// main function
+async function getPokemon() {
+    const name = document.getElementById("pokemonName").value.toLowerCase();
+
+    document.getElementById("loader").style.display = "flex";
+    document.getElementById("card").style.display = "none";
+
+    try {
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
+        const data = await res.json();
+
+        const speciesRes = await fetch(data.species.url);
+        const speciesData = await speciesRes.json();
+
+        const evoRes = await fetch(speciesData.evolution_chain.url);
+        const evoData = await evoRes.json();
+
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("card").style.display = "block";
+
+        document.getElementById("name").innerText = data.name.toUpperCase();
+        document.getElementById("sprite").src =
+            data.sprites.other["official-artwork"].front_default;
+
+        document.getElementById("height").innerText = (data.height / 10).toFixed(2);
+        document.getElementById("weight").innerText = (data.weight / 10).toFixed(2);
+        document.getElementById("region").innerText = regionMap[speciesData.generation.name];
+        document.getElementById("id").innerText = "#" + data.id;
+
+        // types
+        const typesDiv = document.getElementById("types");
+        typesDiv.innerHTML = "";
+        data.types.forEach(t => {
+            const span = document.createElement("span");
+            span.className = "type " + t.type.name;
+            span.innerText = t.type.name.toUpperCase();
+            typesDiv.appendChild(span);
+        });
+
+        // evolution
+        let evoChain = [];
+        let evo = evoData.chain;
+
+        while (evo) {
+            evoChain.push(evo.species.name);
+            evo = evo.evolves_to[0];
+        }
+
+        document.getElementById("evolution").innerText = evoChain.join(" → ");
+
+    } catch (e) {
+        alert("Pokémon not found");
+        document.getElementById("loader").style.display = "none";
+    }
+}
+</script>
+
+</body>
+</html>
